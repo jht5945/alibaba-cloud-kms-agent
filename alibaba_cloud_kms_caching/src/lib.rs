@@ -35,32 +35,6 @@ pub struct SecretsManagerCachingClient {
 
 impl SecretsManagerCachingClient {
     /// Create a new caching client with in-memory store
-    ///
-    /// # Arguments
-    ///
-    /// * `asm_client` - Initialized AWS SDK Secrets Manager client instance
-    /// * `max_size` - Maximum size of the store.
-    /// * `ttl` - Time-to-live of the secrets in the store.
-    /// * `ignore_transient_errors` - Whether the client should serve cached data on transient refresh errors
-    /// ```rust
-    /// use aws_sdk_secretsmanager::Client as SecretsManagerClient;
-    /// use aws_sdk_secretsmanager::{config::Region, Config};
-    /// use aws_secretsmanager_caching::SecretsManagerCachingClient;
-    /// use std::num::NonZeroUsize;
-    /// use std::time::Duration;
-
-    /// let asm_client = SecretsManagerClient::from_conf(
-    /// Config::builder()
-    ///     .behavior_version_latest()
-    ///     .build(),
-    /// );
-    /// let client = SecretsManagerCachingClient::new(
-    ///     asm_client,
-    ///     NonZeroUsize::new(1000).unwrap(),
-    ///     Duration::from_secs(300),
-    ///     false,
-    /// );
-    /// ```
     pub fn new(
         asm_client: SecretsManagerClient,
         max_size: NonZeroUsize,
@@ -74,84 +48,7 @@ impl SecretsManagerCachingClient {
         })
     }
 
-    /// Create a new caching client with in-memory store and the default AWS SDK client configuration
-    ///
-    /// # Arguments
-    ///
-    /// * `max_size` - Maximum size of the store.
-    /// * `ttl` - Time-to-live of the secrets in the store.
-    /// ```rust
-    /// tokio_test::block_on(async {
-    /// use aws_secretsmanager_caching::SecretsManagerCachingClient;
-    /// use std::num::NonZeroUsize;
-    /// use std::time::Duration;
-    ///
-    /// let client = SecretsManagerCachingClient::default(
-    /// NonZeroUsize::new(1000).unwrap(),
-    /// Duration::from_secs(300),
-    /// ).await.unwrap();
-    /// })
-    /// ```
-    // pub async fn default(max_size: NonZeroUsize, ttl: Duration) -> Result<Self, SecretStoreError> {
-    //     let default_config = &aws_config::load_defaults(BehaviorVersion::latest()).await;
-    //     let asm_builder = aws_sdk_secretsmanager::config::Builder::from(default_config)
-    //         .interceptor(CachingLibraryInterceptor);
-    //
-    //     let asm_client = SecretsManagerClient::from_conf(asm_builder.build());
-    //     Self::new(asm_client, max_size, ttl, false)
-    // }
-
-    /// Create a new caching client with in-memory store from an AWS SDK client builder
-    ///
-    /// # Arguments
-    ///
-    /// * `asm_builder` - AWS Secrets Manager SDK client builder.
-    /// * `max_size` - Maximum size of the store.
-    /// * `ttl` - Time-to-live of the secrets in the store.
-    ///
-    /// ```rust
-    /// tokio_test::block_on(async {
-    /// use aws_secretsmanager_caching::SecretsManagerCachingClient;
-    /// use std::num::NonZeroUsize;
-    /// use std::time::Duration;
-    /// use aws_config::{BehaviorVersion, Region};
-
-    /// let config = aws_config::load_defaults(BehaviorVersion::latest())
-    /// .await
-    /// .into_builder()
-    /// .region(Region::from_static("us-west-2"))
-    /// .build();
-
-    /// let asm_builder = aws_sdk_secretsmanager::config::Builder::from(&config);
-
-    /// let client = SecretsManagerCachingClient::from_builder(
-    /// asm_builder,
-    /// NonZeroUsize::new(1000).unwrap(),
-    /// Duration::from_secs(300),
-    /// false,
-    /// )
-    /// .await.unwrap();
-    /// })
-    /// ```
-    // pub async fn from_builder(
-    //     asm_builder: aws_sdk_secretsmanager::config::Builder,
-    //     max_size: NonZeroUsize,
-    //     ttl: Duration,
-    //     ignore_transient_errors: bool,
-    // ) -> Result<Self, SecretStoreError> {
-    //     let asm_client = SecretsManagerClient::from_conf(
-    //         asm_builder.interceptor(CachingLibraryInterceptor).build(),
-    //     );
-    //     Self::new(asm_client, max_size, ttl, ignore_transient_errors)
-    // }
-
     /// Retrieves the value of the secret from the specified version.
-    ///
-    /// # Arguments
-    ///
-    /// * `secret_id` - The ARN or name of the secret to retrieve.
-    /// * `version_id` - The version id of the secret version to retrieve.
-    /// * `version_stage` - The staging label of the version of the secret to retrieve.
     pub async fn get_secret_value(
         &self,
         secret_id: &str,
@@ -179,12 +76,6 @@ impl SecretsManagerCachingClient {
     }
 
     /// Refreshes the secret value through a GetSecretValue call to ASM
-    ///
-    /// # Arguments
-    /// * `secret_id` - The ARN or name of the secret to retrieve.
-    /// * `version_id` - The version id of the secret version to retrieve.
-    /// * `version_stage` - The staging label of the version of the secret to retrieve.
-    /// * `cached_value` - The value currently in the cache.
     async fn refresh_secret_value(
         &self,
         secret_id: &str,
@@ -241,14 +132,6 @@ impl SecretsManagerCachingClient {
     }
 
     /// Check if the value in the cache is still fresh enough to be served again
-    ///
-    /// # Arguments
-    /// * `version_id` - The version id of the secret version to retrieve.
-    /// * `version_stage` - The staging label of the version of the secret to retrieve. Defaults to AWSCURRENT
-    /// * `cached_value` - The value currently in the cache.
-    ///
-    /// # Returns
-    /// * true if value can be reused, false if not
     async fn is_current(
         &self,
         version_id: Option<&str>,

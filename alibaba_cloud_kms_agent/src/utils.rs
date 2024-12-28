@@ -2,16 +2,12 @@ use crate::config::Config;
 use crate::constants::{APPNAME, MAX_REQ_TIME_SEC, VERSION};
 use aws_sdk_secretsmanager::config::interceptors::BeforeTransmitInterceptorContextMut;
 use aws_sdk_secretsmanager::config::{ConfigBag, Intercept, RuntimeComponents};
-#[cfg(not(test))]
 use aws_sdk_secretsmanager::Client as SecretsManagerClient;
 use std::env::VarError;
 use std::fs;
 use std::time::Duration;
 
-#[cfg(not(test))]
 use std::env::var; // Use the real std::env::var
-#[cfg(test)]
-use tests::var_test as var;
 
 /// Helper to format error response body in Coral JSON 1.1 format.
 ///
@@ -85,10 +81,7 @@ pub fn get_token(config: &Config) -> Result<String, Box<dyn std::error::Error>> 
 }
 
 #[doc(hidden)]
-#[cfg(not(test))]
 pub use time_out_impl as time_out;
-#[cfg(test)]
-pub use time_out_test as time_out;
 
 /// Helper function to get the time out setting for request processing.
 ///
@@ -98,10 +91,6 @@ pub use time_out_test as time_out;
 #[doc(hidden)]
 pub fn time_out_impl() -> Duration {
     Duration::from_secs(MAX_REQ_TIME_SEC)
-}
-#[cfg(test)]
-pub fn time_out_test() -> Duration {
-    Duration::from_secs(10) // Timeout in 10 seconds for testing.
 }
 
 /// Validates the provided configuration and creates an AWS Secrets Manager client
@@ -118,7 +107,6 @@ pub fn time_out_test() -> Duration {
 /// * `Err(Box<dyn std::error::Error>)` if there is an error creating the Secrets Manager client
 ///   or validating the AWS credentials.
 #[doc(hidden)]
-#[cfg(not(test))]
 pub async fn validate_and_create_asm_client(
     config: &Config,
 ) -> Result<SecretsManagerClient, Box<dyn std::error::Error>> {
@@ -175,72 +163,5 @@ impl Intercept for AgentModifierInterceptor {
         request.headers_mut().insert("user-agent", full_agent); // Overwrite header.
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-pub mod tests {
-    use super::*;
-    use std::cell::RefCell;
-    use std::env::temp_dir;
-    use std::thread_local;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    // Used to cleanup resources after test completon.
-    pub struct CleanUp<'a> {
-        pub file: Option<&'a str>,
-    }
-
-    impl Drop for CleanUp<'_> {
-        fn drop(&mut self) {
-            // Clear env var injections.
-            ENVVAR.set(None);
-
-            // Cleanup temp files.
-            if let Some(name) = self.file {
-                let _ = std::fs::remove_file(name);
-            }
-        }
-    }
-
-    // Create a temp file name for a test.
-    pub fn tmpfile_name(suffix: &str) -> String {
-        format!(
-            "{}/{}_{:?}_{suffix}",
-            temp_dir().display(),
-            std::process::id(),
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap()
-        )
-    }
-
-    // Used to inject env variable values for testing. Uses thread local data since
-    // multi-threaded tests setting process wide env variables can collide.
-    thread_local! {
-        static ENVVAR: RefCell<Option<Vec<(&'static str, &'static str)>>> = const { RefCell::new(None) };
-    }
-    pub fn set_test_var(key: &'static str, val: &'static str) {
-        ENVVAR.set(Some(vec![(key, val)]));
-    }
-    pub fn set_test_vars(vars: Vec<(&'static str, &'static str)>) {
-        ENVVAR.set(Some(vars));
-    }
-
-    // Stub std::env::var that reads injected variables from thread_local
-    pub fn var_test(key: &str) -> Result<String, VarError> {
-        // Shortcut key to force failure.
-        if key == "FAIL_TOKEN" {
-            return Err(VarError::NotPresent);
-        }
-        if let Some(varvec) = ENVVAR.with_borrow(|v| v.clone()) {
-            let found = varvec.iter().find(|keyval| keyval.0 == key);
-            if let Some(some_found) = found {
-                return Ok(some_found.1.to_string());
-            }
-        } else {
-            // Return a default value if no value is injected.
-            return Ok("xyzzy".to_string()); // Poof!
-        }
-
-        Err(VarError::NotPresent) // A fake value was injected but not for this key.
     }
 }

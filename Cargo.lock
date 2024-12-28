@@ -71,14 +71,10 @@ version = "1.0.1"
 dependencies = [
  "aws-config",
  "aws-sdk-secretsmanager",
- "aws-smithy-mocks-experimental",
- "aws-smithy-runtime",
  "aws-smithy-runtime-api",
  "aws-smithy-types",
- "http 0.2.12",
  "linked-hash-map",
  "serde",
- "serde_json",
  "serde_with",
  "thiserror 2.0.3",
  "tokio",
@@ -391,16 +387,6 @@ version = "0.60.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4683df9469ef09468dad3473d129960119a0d3593617542b7d52086c8486f2d6"
 dependencies = [
- "aws-smithy-types",
-]
-
-[[package]]
-name = "aws-smithy-mocks-experimental"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e1069164f54cd37cdcf67e30f77ed996ccd71ad85344b9bb0412a1ca224617b"
-dependencies = [
- "aws-smithy-runtime-api",
  "aws-smithy-types",
 ]
 
