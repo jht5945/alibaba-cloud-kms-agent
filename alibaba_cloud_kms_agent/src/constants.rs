@@ -15,8 +15,8 @@ pub const BAD_PREFIX_MSG: &str =
 
 /// Other constants that are used across the code base.
 
-// The application name.
-pub const APPNAME: &str = "alibaba-cloud-kms-agent";
+// // The application name.
+// pub const APPNAME: &str = "alibaba-cloud-kms-agent";
 // The build version of the agent
 pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 // The maximum for incoming connections need to be relatively high, since during periods of high latency, we can easily have many outstanding connections on a very busy box.

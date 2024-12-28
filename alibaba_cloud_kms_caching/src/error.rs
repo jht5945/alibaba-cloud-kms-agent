@@ -1,22 +1,21 @@
-use aws_smithy_runtime_api::client::{orchestrator::HttpResponse, result::SdkError};
+use alibaba_cloud_kms::AliyunClientError;
 
-/// Helper function to determine transient errors. Transient errors include any timeout error,
-/// unparseable response error, dispatch error due to timeout or IO, and 5xx server-side error.
-///
-/// # Arguments
-/// * `e` - An SDK error
-///
-/// # Returns
-/// * true if transient error, false if not
-pub fn is_transient_error<S>(e: &SdkError<S, HttpResponse>) -> bool
-where
-    S: std::error::Error + 'static,
-{
+pub fn is_transient_error(e: &AliyunClientError) -> bool {
     match e {
-        SdkError::TimeoutError(_) => true,
-        SdkError::ResponseError(_) => true,
-        SdkError::DispatchFailure(derr) if derr.is_timeout() || derr.is_io() => true,
-        SdkError::ServiceError(serr) if serr.raw().status().is_server_error() => true,
-        _ => false,
+        AliyunClientError::Reqwest(_) => true,
+        AliyunClientError::InvalidHeader(_) => false,
+        AliyunClientError::InvalidRequest(_) => false,
+        AliyunClientError::InvalidResponse {
+            request_id: _,
+            error_code,
+            error_message: _,
+        } => {
+            // FIXME check more error codes @see alibaba_cloud_kms_agent/src/cache_manager.rs
+            match error_code.as_str() {
+                "Rejected.Throttling" => true,
+                error if error.contains("Temporary") || error.contains("InternalError") => true,
+                _ => false,
+            }
+        }
     }
 }

@@ -6,6 +6,7 @@ use self::cache::Cache;
 
 use super::{SecretStore, SecretStoreError};
 
+use log::info;
 use std::{
     num::NonZeroUsize,
     time::{Duration, Instant},
@@ -68,10 +69,22 @@ impl SecretStore for MemoryStore {
             version_id: version_id.map(String::from),
             version_stage: version_stage.map(String::from),
         }) {
-            Some(gsv) if gsv.last_updated_at.elapsed() > self.ttl => {
-                Err(SecretStoreError::CacheExpired(Box::new(gsv.value.clone())))
+            Some(gsv) => {
+                info!(
+                    "Get from cache [{}, {:?}, {:?}], last updated elapsed: {:?}, ttl: {:?}, cache expired: {}",
+                    secret_id,
+                    version_id,
+                    version_stage,
+                    gsv.last_updated_at.elapsed(),
+                    self.ttl,
+                    gsv.last_updated_at.elapsed() > self.ttl
+                );
+                if gsv.last_updated_at.elapsed() > self.ttl {
+                    Err(SecretStoreError::CacheExpired(Box::new(gsv.value.clone())))
+                } else {
+                    Ok(gsv.clone().value)
+                }
             }
-            Some(gsv) => Ok(gsv.clone().value),
             None => Err(SecretStoreError::ResourceNotFound),
         }
     }

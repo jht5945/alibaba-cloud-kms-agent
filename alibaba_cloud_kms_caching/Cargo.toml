@@ -9,17 +9,14 @@ repository = "https://github.com/jht5945/alibaba-cloud-kms-agent"
 readme = "README.md"
 
 [dependencies]
-aws-sdk-secretsmanager = "1"
-aws-smithy-runtime-api = "1"
-aws-smithy-types = "1"
-serde_with = "3"
-serde = { version = "1", features = ["derive"] }
-thiserror = "2"
-tokio = { version = "1", features = ["rt", "sync"] }
-linked-hash-map = "0.5.6"
-aws-config = "1"
+log = "0.4"
+serde_with = "3.11"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+tokio = { version = "1.42", features = ["rt", "sync"] }
+linked-hash-map = "0.5"
+alibaba-cloud-kms = { version = "0.1", git = "https://github.com/jht5945/alibaba-cloud-kms.git" }
+iso8601-timestamp = "0.3"
 
 [dev-dependencies]
-aws-sdk-secretsmanager = { version = "1", features = ["test-util"] }
-tokio = { version = "1", features = ["macros", "rt", "sync", "test-util"] }
-tokio-test = "0.4.4"
+tokio = { version = "1.42", features = ["macros", "rt", "sync", "test-util"] }

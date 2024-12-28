@@ -28,21 +28,9 @@ pub struct Server {
 }
 
 /// Handle incoming HTTP requests.
-///
-/// Implements the HTTP handler. Each incomming request is handled in its own
-/// thread.
+/// Implements the HTTP handler. Each incoming request is handled in its own thread.
 impl Server {
     /// Create a server instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `listener` - The TcpListener to use to accept incomming requests.
-    /// * `cfg` - The config object to use for options such header names.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Self)` - The server object.
-    /// * `Box<dyn std::error::Error>>` - Retruned for errors initializing the agent
     pub async fn new(
         listener: TcpListener,
         cfg: &Config,
@@ -58,15 +46,6 @@ impl Server {
     }
 
     /// Accept the next request on the listener and process it in a separate thread.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` - The request is being handled in the background.
-    /// * `Err(Error)` - IOError while accepting request.
-    ///
-    /// # Errors
-    ///
-    /// * `std::io::Error` - Error while accepting request.
     pub async fn serve_request(&self) -> Result<(), Box<dyn std::error::Error>> {
         let (stream, _) = self.listener.accept().await?;
         stream.set_ttl(1)?; // Prohibit network hops
@@ -87,17 +66,7 @@ impl Server {
         Ok(())
     }
 
-    /// Private helper to process the incomming request body and format a response.
-    ///
-    /// # Arguments
-    ///
-    /// * `req` - The incomming HTTP request.
-    /// * `count` - The number of concurrent requets being handled.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Response<Full<Bytes>>)` - The HTTP response to send back.
-    /// * `Err(Error)` - Never returned, converted to a response.
+    /// Private helper to process the incoming request body and format a response.
     #[doc(hidden)]
     async fn complete_req(
         &self,
@@ -118,17 +87,7 @@ impl Server {
         }
     }
 
-    /// Parse an incomming request and provide the response data.
-    ///
-    /// # Arguments
-    ///
-    /// * `req` - The incomming HTTP request.
-    /// * `count` - The number of concurrent requets being handled.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(String)` - The payload to return.
-    /// * `Err((u16, String))` - A HTTP error code and error message.
+    /// Parse an incoming request and provide the response data.
     #[doc(hidden)]
     async fn get_result(
         &self,
@@ -172,18 +131,6 @@ impl Server {
     }
 
     /// Verify the incomming request does not exceed the maximum connection limit.
-    ///
-    /// The limit is not enforced for ping/health checks.
-    ///
-    /// # Arguments
-    ///
-    /// * `req` - The incomming HTTP request.
-    /// * `count` - The number of concurrent requets being handled.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` - For health checks or when the request is within limits.
-    /// * `Err((u16, String))` - A 429 error code and error message.
     #[doc(hidden)]
     fn validate_max_conn(
         &self,
@@ -204,19 +151,6 @@ impl Server {
     }
 
     /// Verify the request has the correct SSRF token and no forwarding header is set.
-    ///
-    /// Health checks are not subject to these checks.
-    ///
-    /// # Arguments
-    ///
-    /// * `req` - The incomming HTTP request.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(String)` - The value of the secret.
-    /// * `Err((u16, String))` - The error code and message.
-    /// * `Ok(())` - For health checks or when the request has the correct token.
-    /// * `Err((u16, String))` - A 400 or 403 error code (if header is set or token is missing or wrong) and error message.
     #[doc(hidden)]
     fn validate_token(&self, req: &Request<IncomingBody>) -> Result<(), HttpError> {
         if req.uri().path() == "/ping" {
@@ -242,15 +176,6 @@ impl Server {
     }
 
     /// Verify the request is using the GET HTTP verb.
-    ///
-    /// # Arguments
-    ///
-    /// * `req` - The incomming HTTP request.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(())` - If the GET verb/method is use.
-    /// * `Err((u16, String))` - A 405 error codde and message when GET is not used.
     #[doc(hidden)]
     fn validate_method(&self, req: &Request<IncomingBody>) -> Result<(), HttpError> {
         if *req.method() == Method::GET {

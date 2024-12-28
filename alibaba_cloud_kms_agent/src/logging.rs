@@ -31,15 +31,6 @@ const FILE_APPENDER: &str = "FILE_APPENDER";
 static STARTUP: Once = Once::new();
 
 /// Initializes file based logging for the daemon.
-///
-/// # Arguments
-///
-/// * `log_level` - The log level to report.
-///
-/// # Returns
-///
-/// * `Ok(())` - If no errors are encountered.
-/// * `Err(Error)` - For errors initializing the log.
 pub fn init_logger(log_level: LogLevel) -> Result<(), Box<dyn std::error::Error>> {
     let fixed_window_roller =
         FixedWindowRoller::builder().build(LOG_ARCHIVE_FILE_PATH_PATTERN, MAX_LOG_ARCHIVE_FILES)?;

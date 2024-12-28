@@ -1,9 +1,5 @@
 // #![warn(missing_docs)]
-#![warn(
-    missing_debug_implementations,
-    missing_docs,
-    rustdoc::missing_crate_level_docs
-)]
+#![warn(missing_debug_implementations, rustdoc::missing_crate_level_docs)]
 
 //! AWS Secrets Manager Caching Library
 
@@ -14,35 +10,37 @@ pub mod output;
 /// Manages the lifecycle of cached secrets
 pub mod secret_store;
 
-use aws_sdk_secretsmanager::Client as SecretsManagerClient;
-use error::is_transient_error;
 use secret_store::SecretStoreError;
 
+use crate::error::is_transient_error;
+use alibaba_cloud_kms::{DescribeSecretRequest, GetSecretValueRequest, KmsClient};
+use log::info;
 use output::GetSecretValueOutputDef;
 use secret_store::{MemoryStore, SecretStore};
+use std::time::Instant;
 use std::{error::Error, num::NonZeroUsize, time::Duration};
 use tokio::sync::RwLock;
 
 /// AWS Secrets Manager Caching client
 #[derive(Debug)]
-pub struct SecretsManagerCachingClient {
+pub struct KmsCachingClient {
     /// Secrets Manager client to retrieve secrets.
-    asm_client: SecretsManagerClient,
+    kms_client: KmsClient,
     /// A store used to cache secrets.
     store: RwLock<Box<dyn SecretStore>>,
     ignore_transient_errors: bool,
 }
 
-impl SecretsManagerCachingClient {
+impl KmsCachingClient {
     /// Create a new caching client with in-memory store
     pub fn new(
-        asm_client: SecretsManagerClient,
+        kms_client: KmsClient,
         max_size: NonZeroUsize,
         ttl: Duration,
         ignore_transient_errors: bool,
     ) -> Result<Self, SecretStoreError> {
         Ok(Self {
-            asm_client,
+            kms_client,
             store: RwLock::new(Box::new(MemoryStore::new(max_size, ttl))),
             ignore_transient_errors,
         })
@@ -61,12 +59,20 @@ impl SecretsManagerCachingClient {
             Ok(r) => Ok(r),
             Err(SecretStoreError::ResourceNotFound) => {
                 drop(read_lock);
+                info!(
+                    "get_secret_value: ResourceNotFound [{}, {:?}, {:?}]",
+                    secret_id, version_id, version_stage
+                );
                 Ok(self
                     .refresh_secret_value(secret_id, version_id, version_stage, None)
                     .await?)
             }
             Err(SecretStoreError::CacheExpired(cached_value)) => {
                 drop(read_lock);
+                info!(
+                    "get_secret_value: CacheExpired [{}, {:?}, {:?}]",
+                    secret_id, version_id, version_stage
+                );
                 Ok(self
                     .refresh_secret_value(secret_id, version_id, version_stage, Some(cached_value))
                     .await?)
@@ -101,21 +107,34 @@ impl SecretsManagerCachingClient {
             }
         }
 
-        let result: GetSecretValueOutputDef = match self
-            .asm_client
-            .get_secret_value()
-            .secret_id(secret_id)
-            .set_version_id(version_id.map(String::from))
-            .set_version_stage(version_stage.map(String::from))
-            .send()
-            .await
-        {
+        let start_get_secret_value = Instant::now();
+        let get_secret_value_response_result = self
+            .kms_client
+            .get_secret_value(GetSecretValueRequest {
+                secret_name: secret_id.to_owned(),
+                version_id: version_id.map(String::from),
+                version_stage: version_stage.map(String::from),
+                ..Default::default()
+            })
+            .await;
+        info!(
+            "kms_client.get_secret_value({}, {:?}, {:?}), elapsed: {}ms",
+            secret_id,
+            version_id,
+            version_stage,
+            start_get_secret_value.elapsed().as_millis()
+        );
+        let result: GetSecretValueOutputDef = match get_secret_value_response_result {
             Ok(r) => r.into(),
             Err(e)
                 if self.ignore_transient_errors
                     && is_transient_error(&e)
                     && cached_value.is_some() =>
             {
+                info!(
+                    "Return expired cache value for ignore_transient_errors is on, error: {}",
+                    e
+                );
                 *cached_value.unwrap()
             }
             Err(e) => Err(e)?,
@@ -138,47 +157,29 @@ impl SecretsManagerCachingClient {
         version_stage: Option<&str>,
         cached_value: Box<GetSecretValueOutputDef>,
     ) -> Result<bool, Box<dyn Error>> {
-        let describe = match self
-            .asm_client
-            .describe_secret()
-            .secret_id(cached_value.arn.unwrap())
-            .send()
-            .await
-        {
+        let secret_id = cached_value.name.unwrap();
+        let start_describe_secret = Instant::now();
+        let describe_secret_response_result = self
+            .kms_client
+            .describe_secret(DescribeSecretRequest {
+                secret_name: secret_id.clone(),
+                ..Default::default()
+            })
+            .await;
+        info!(
+            "kms_client.describe_secret({}, {:?}, {:?}), elapsed: {}ms",
+            secret_id,
+            version_id,
+            version_stage,
+            start_describe_secret.elapsed().as_millis()
+        );
+        let _describe = match describe_secret_response_result {
             Ok(r) => r,
             Err(e) if self.ignore_transient_errors && is_transient_error(&e) => return Ok(true),
             Err(e) => Err(e)?,
         };
 
-        let real_vids_to_stages = match describe.version_ids_to_stages() {
-            Some(vids_to_stages) => vids_to_stages,
-            // Secret has no version Ids
-            None => return Ok(false),
-        };
-
-        #[allow(clippy::unnecessary_unwrap)]
-        // Only version id is given, then check if the version id still exists
-        if version_id.is_some() && version_stage.is_none() {
-            return Ok(real_vids_to_stages
-                .iter()
-                .any(|(k, _)| k.eq(version_id.unwrap())));
-        }
-
-        // If no version id is given, use the cached version id
-        let version_id = match version_id {
-            Some(id) => id.to_owned(),
-            None => cached_value.version_id.clone().unwrap(),
-        };
-
-        // If no version stage was passed, check AWSCURRENT
-        let version_stage = match version_stage {
-            Some(v) => v.to_owned(),
-            None => "AWSCURRENT".to_owned(),
-        };
-
-        // True if the version id and version stage match real_vids_to_stages in AWS Secrets Manager
-        Ok(real_vids_to_stages
-            .iter()
-            .any(|(k, v)| k.eq(&version_id) && v.contains(&version_stage)))
+        // FIXME Alibaba Cloud cannot check secret via kms:DescribeSecret which like AWS
+        Ok(false)
     }
 }

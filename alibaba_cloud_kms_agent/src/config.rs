@@ -27,7 +27,7 @@ const DEFAULT_SSRF_ENV_VARIABLES: [&str; 6] = [
 const DEFAULT_PATH_PREFIX: &str = "/v1/";
 const DEFAULT_IGNORE_TRANSIENT_ERRORS: bool = true;
 
-const DEFAULT_REGION: Option<String> = None;
+const DEFAULT_ENDPOINT: Option<String> = None;
 
 /// Private struct used to deserialize configurations from the file.
 #[doc(hidden)]
@@ -42,7 +42,7 @@ struct ConfigFile {
     ssrf_env_variables: Vec<String>,
     path_prefix: String,
     max_conn: String,
-    region: Option<String>,
+    endpoint: Option<String>,
     ignore_transient_errors: bool,
 }
 
@@ -100,8 +100,8 @@ pub struct Config {
     /// The maximum number of simultaneous connections.
     max_conn: usize,
 
-    /// The AWS Region that will be used to send the Secrets Manager request to.
-    region: Option<String>,
+    /// The KMS endpoint that will be used to send the KMS request to.
+    endpoint: Option<String>,
 
     /// Whether the agent should serve cached data on transient refresh errors
     ignore_transient_errors: bool,
@@ -117,18 +117,6 @@ impl Default for Config {
 /// The contains the configurations that are used by the daemon.
 impl Config {
     /// Initialize the configuation using the optional configuration file.
-    ///
-    /// If and override file is not provided, default configurations will be
-    /// used.
-    ///
-    /// # Arguments
-    ///
-    /// * `file_pth` - The configuration file (in toml format) used to override the default, or None to use the defaults.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Config)` - The config struct.
-    /// * `Err((Error)` - The error encountered when trying to read or parse the config overrides.
     pub fn new(file_path: Option<&str>) -> Result<Config, Box<dyn std::error::Error>> {
         // Setting default configurations
         let mut config = ConfigLib::builder()
@@ -146,7 +134,7 @@ impl Config {
             )?
             .set_default("path_prefix", DEFAULT_PATH_PREFIX)?
             .set_default("max_conn", DEFAULT_MAX_CONNECTIONS)?
-            .set_default("region", DEFAULT_REGION)?
+            .set_default("endpoint", DEFAULT_ENDPOINT)?
             .set_default("ignore_transient_errors", DEFAULT_IGNORE_TRANSIENT_ERRORS)?;
 
         // Merge the config overrides onto the default configurations, if provided.
@@ -159,108 +147,57 @@ impl Config {
     }
 
     /// The level of logging the agent provides ie. debug, info, warn, error or none
-    ///
-    /// # Returns
-    ///
-    /// * `LogLevel` - The log level to use. Defaults to Info.
     pub fn log_level(&self) -> LogLevel {
         self.log_level
     }
 
-    /// The port for the local HTTP server to listen for incomming requests.
-    ///
-    /// # Returns
-    ///
-    /// * `port` - The TCP port number. Defaults to 2773.
+    /// The port for the local HTTP server to listen for incoming requests.
     pub fn http_port(&self) -> u16 {
         self.http_port
     }
 
     /// The `time to live` of a secret in the cache in seconds.
-    ///
-    /// # Returns
-    ///
-    /// * `ttl` - The number of seconds to retain a secret in the cache. Defaults to 300.
     pub fn ttl(&self) -> Duration {
         self.ttl
     }
 
     /// Maximum number secrets that can be stored in the cache
-    ///
-    /// # Returns
-    ///
-    /// * `cache_size` - The maximum number of secrets to cache. Defaults to 1000.
     pub fn cache_size(&self) -> NonZeroUsize {
         self.cache_size
     }
 
     /// A list of request headers which will be checked for the SSRF token (can not be empty).
-    ///
-    /// # Returns
-    ///
-    /// * `ssrf_headers` - List of headers to check for SSRF token. Defaults to ["X-Aws-Parameters-Secrets-Token", "X-Vault-Token"].
     pub fn ssrf_headers(&self) -> Vec<String> {
         self.ssrf_headers.clone()
     }
 
     /// The name of the environment variable containing the SSRF token.
-    ///
-    /// # Returns
-    ///
-    /// * `ssrf_env_variables` - The name of the env variable containing the SSRF token value. Defaults to ["AWS_TOKEN", "AWS_SESSION_TOKEN", "AWS_CONTAINER_AUTHORIZATION_TOKEN"].
     pub fn ssrf_env_variables(&self) -> Vec<String> {
         self.ssrf_env_variables.clone()
     }
 
     /// The prefix for path based requests (must begin with /).
-    ///
-    /// # Returns
-    ///
-    /// * `path_prefix` - The path name prefix. Defaults to /v1/.
     pub fn path_prefix(&self) -> String {
         self.path_prefix.clone()
     }
 
     /// The maximum number of simultaneous connections (1000 max).
-    ///
-    /// # Returns
-    ///
-    /// * `max_conn` - The maximum allowed simultaneious connections. Defaults to 800.
     pub fn max_conn(&self) -> usize {
         self.max_conn
     }
 
-    /// The AWS Region that will be used to send the Secrets Manager request to.
-    /// The default region is automatically determined through SDK defaults.
-    /// For a list of all of the Regions that you can specify, see https://docs.aws.amazon.com/general/latest/gr/asm.html
-    ///
-    /// # Returns
-    ///
-    /// * `region` - The AWS Region that will be used to send the Secrets Manager request to.
-    pub fn region(&self) -> Option<&String> {
-        self.region.as_ref()
+    /// The KMS enpoint that will be used to send the KMS request to.
+    pub fn endpoint(&self) -> Option<&String> {
+        self.endpoint.as_ref()
     }
 
     /// Whether the client should serve cached data on transient refresh errors
-    ///
-    /// # Returns
-    ///
-    /// * `ignore_transient_errors` - Whether the client should serve cached data on transient refresh errors. Defaults to "true"
     pub fn ignore_transient_errors(&self) -> bool {
         self.ignore_transient_errors
     }
 
     /// Private helper that fills in the Config instance from the specified
     /// config overrides (or defaults).
-    ///
-    /// # Arguments
-    ///
-    /// * `config_file` - The parsed config overrides and defaults.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Config)` - If no errors were found in the overrides.
-    /// * `Err(Error)` - An error message with the configuration error.
     #[doc(hidden)]
     fn build(config_file: ConfigFile) -> Result<Config, Box<dyn std::error::Error>> {
         let config = Config {
@@ -296,7 +233,7 @@ impl Config {
                 Some(1..1001),
                 None,
             )?,
-            region: config_file.region,
+            endpoint: config_file.endpoint,
             ignore_transient_errors: config_file.ignore_transient_errors,
         };
 
@@ -316,25 +253,6 @@ impl Config {
 }
 
 /// Private helper to convert a string to number and perform range checks, returning a custom error on failure.
-///
-/// # Arguments
-///
-/// * `str_val` - The sring to convert.
-/// * `msg` - The custom error message.
-/// * `pos_range` - An optional positive range constraint. The number must be within this range.
-/// * `neg_range` - An optional negitive range constraint. The number must not be within this range.
-///
-/// # Returns
-///
-/// * `Ok(num)` - When the string can be parsed and the number satisfies the range checks.
-/// * `Err(Error)` - The custom error message on failure.
-///
-/// # Example
-///
-/// ```
-/// use std::ops::Range;
-/// assert_eq!(parse_num::<u32>(&String::from("42"), "What is the qustion?", Some(1..100), None).unwrap(), 42);
-/// ```
 #[doc(hidden)]
 fn parse_num<T>(
     str_val: &str,

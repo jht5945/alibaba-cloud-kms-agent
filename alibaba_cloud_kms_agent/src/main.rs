@@ -20,31 +20,12 @@ use logging::init_logger;
 use utils::get_token;
 
 /// Main entry point for the daemon.
-///
-/// # Returns
-///
-/// * `Ok(())` - Never retuned.
-/// * `Box<dyn std::error::Error>>` - Retruned for errors initializing the agent.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     run(env::args(), &report, &forever).await
 }
 
 /// Private helper to report startup and the listener port.
-///
-/// The private helper just prints the startup info. In unit tests a different
-/// helper is used to report back the server port.
-///
-/// # Arguments
-///
-/// * `addr` - The socket address on which the daemon is listening.
-///
-/// # Example
-///
-/// ```
-/// use std::net::SocketAddr;
-/// report( &SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2773) );
-/// ```
 #[doc(hidden)]
 fn report(addr: &SocketAddr) {
     let start_msg = format!(
@@ -56,36 +37,13 @@ fn report(addr: &SocketAddr) {
     info!("{start_msg}");
 }
 
-/// Private helper used to run the server fovever.
-///
-/// This helper is used when the server is started through the main entry point.
-/// In unit tests a different helper is used to signal shutdown.
-///
-/// # Returns
-///
-/// * bool - Always returns false so the server never shuts down.
-///
-/// # Example
-///
-/// ```
-/// assert_eq!(forever(), false);
-/// ```
+/// Private helper used to run the server forever.
 #[doc(hidden)]
 fn forever() -> bool {
     false
 }
 
 /// Private helper do the main body of the server.
-///
-/// # Arguments
-///
-/// * `args` - The command line arguments.
-/// * `report` - A call back used to report startup and the listener port.
-/// * `end` - A call back used to signal shut down.
-/// # Returns
-///
-/// * `Ok(())` - Never retuned when started by the main entry point.
-/// * `Box<dyn std::error::Error>` - Retruned for errors initializing the agent.
 #[doc(hidden)]
 async fn run<S: FnMut(&SocketAddr), E: FnMut() -> bool>(
     args: impl IntoIterator<Item = String>,
@@ -113,16 +71,6 @@ async fn run<S: FnMut(&SocketAddr), E: FnMut() -> bool>(
 }
 
 /// Private helper to perform initialization.
-///
-/// # Arguments
-///
-/// * `args` - The command line args.
-///
-/// # Returns
-///
-/// * (Config, TcpListener) - The configuration info and the TCP listener.
-///
-/// ```
 #[doc(hidden)]
 async fn init(args: impl IntoIterator<Item = String>) -> (Config, TcpListener) {
     // Get the arg iterator and program name from arg 0.
@@ -181,11 +129,6 @@ async fn init(args: impl IntoIterator<Item = String>) -> (Config, TcpListener) {
 }
 
 /// Private helper print error messages and exit the process with an error.
-///
-/// # Arguments
-///
-/// * `msg` - An error message to print (or the empty string if none is to be printed).
-/// * `usage` - A usage message to print (or the empty string if none is to be printed).
 #[doc(hidden)]
 fn err_exit(msg: &str, usage: &str) -> ! {
     if !msg.is_empty() {
