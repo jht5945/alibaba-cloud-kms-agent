@@ -1,11 +1,11 @@
 [package]
-name = "aws_secretsmanager_agent"
+name = "alibaba_cloud_kms_agent"
 version = "1.0.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "The AWS Secrets Manager Agent is a local HTTP service that you can install and use in your compute environments to read secrets from Secrets Manager and cache them in memory."
-homepage = "https://github.com/aws/aws-secretsmanager-agent"
-repository = "https://github.com/aws/aws-secretsmanager-agent"
+description = "The Alibaba Cloud KMS Agent is a local HTTP service that you can install and use in your compute environments to read secrets from Secrets Manager and cache them in memory."
+homepage = "https://github.com/jht5945/alibaba-cloud-kms-agent"
+repository = "https://github.com/jht5945/alibaba-cloud-kms-agent"
 readme = "../README.md"
 
 [dependencies]
@@ -28,7 +28,7 @@ aws-sdk-sts = "1"
 log = "0.4.20"
 log4rs = { version = "1.2.0", features = ["gzip"] }
 url = "2"
-aws_secretsmanager_caching = { version = "1.0.1", path = "../aws_secretsmanager_caching" }
+alibaba_cloud_kms_caching = { version = "1.0.1", path = "../alibaba_cloud_kms_caching" }
 
 # For unit tests
 [dev-dependencies]

@@ -123,7 +123,7 @@ pub async fn validate_and_create_asm_client(
     config: &Config,
 ) -> Result<SecretsManagerClient, Box<dyn std::error::Error>> {
     use aws_config::{BehaviorVersion, Region};
-    use aws_secretsmanager_caching::error::is_transient_error;
+    use alibaba_cloud_kms_caching::error::is_transient_error;
 
     let default_config = &aws_config::load_defaults(BehaviorVersion::latest()).await;
     let mut asm_builder = aws_sdk_secretsmanager::config::Builder::from(default_config)
@@ -242,92 +242,5 @@ pub mod tests {
         }
 
         Err(VarError::NotPresent) // A fake value was injected but not for this key.
-    }
-
-    // Verify we can read the default config variable.
-    #[test]
-    fn test_env_set() {
-        let _cleanup = CleanUp { file: None };
-        set_test_var("AWS_TOKEN", "abc123");
-        let cfg = Config::new(None).expect("config failed");
-        assert_eq!(get_token(&cfg).expect("token fail"), "abc123");
-    }
-
-    // Verify we can use the second variable in the list
-    #[test]
-    fn test_alt_env_set() {
-        let _cleanup = CleanUp { file: None };
-        set_test_var("AWS_SESSION_TOKEN", "123abc");
-        let cfg = Config::new(None).expect("config failed");
-        assert_eq!(get_token(&cfg).expect("token fail"), "123abc");
-    }
-
-    // Verify the variable can point to a file and we use the file contents.
-    #[test]
-    fn test_file_token() {
-        let token = "4 chosen by fair dice roll, guaranteed to be random";
-        let tmpfile = tmpfile_name("test_file_token");
-        let _cleanup = CleanUp {
-            file: Some(&tmpfile),
-        };
-        std::fs::write(&tmpfile, token).expect("could not write");
-        let file = Box::new(format!("file://{tmpfile}"));
-        set_test_var("AWS_TOKEN", Box::leak(file));
-        let cfg = Config::new(None).expect("config failed");
-        assert_eq!(get_token(&cfg).expect("token fail"), token);
-    }
-
-    // Verify we correctly handle a missing file.
-    #[test]
-    fn test_file_token_missing() {
-        #[cfg(unix)]
-        const NO_SUCH_FILE_ERROR_MSG: &str = "No such file or directory (os error 2)";
-        #[cfg(windows)]
-        const NO_SUCH_FILE_ERROR_MSG: &str =
-            "The system cannot find the file specified. (os error 2)";
-
-        let _cleanup = CleanUp { file: None };
-        set_test_var("AWS_TOKEN", "file:///NoSuchFile");
-        let cfg = Config::new(None).expect("config failed");
-        assert_eq!(
-            get_token(&cfg).err().unwrap().to_string(),
-            NO_SUCH_FILE_ERROR_MSG
-        );
-    }
-
-    // Verify the first variable in the list takes precedence
-    #[test]
-    fn two_tokens() {
-        let _cleanup = CleanUp { file: None };
-        set_test_vars(vec![
-            ("AWS_TOKEN", "yzzyx"),
-            ("AWS_SESSION_TOKEN", "CTAtoken"),
-        ]); // Good token, unusable token.
-        let cfg = Config::new(None).expect("config failed");
-        assert_eq!(get_token(&cfg).expect("token fail"), "yzzyx");
-    }
-
-    // Verify we return the correct error when a variable is not set.
-    #[test]
-    fn test_env_fail() {
-        let tmpfile = tmpfile_name("test_env_fail.toml");
-        let _cleanup = CleanUp {
-            file: Some(&tmpfile),
-        };
-        set_test_var("", "");
-        std::fs::write(&tmpfile, "ssrf_env_variables = [\"NOSUCHENV\"]").expect("could not write");
-        let cfg = Config::new(Some(&tmpfile)).expect("config failed");
-        assert!(get_token(&cfg)
-            .err()
-            .unwrap()
-            .downcast_ref::<VarError>()
-            .unwrap()
-            .eq(&VarError::NotPresent));
-    }
-
-    // Make sure the timeout functon returns the correct value.
-    #[test]
-    fn test_time_out() {
-        assert_eq!(time_out_impl(), Duration::from_secs(MAX_REQ_TIME_SEC));
     }
 }

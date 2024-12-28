@@ -1,14 +1,16 @@
-# AWS Secrets Manager Agent
+# Alibaba Cloud KMS Agent
 
-The AWS Secrets Manager Agent is a client\-side HTTP service that you can use to standardize consumption of secrets from Secrets Manager across environments such as AWS Lambda, Amazon Elastic Container Service, Amazon Elastic Kubernetes Service, and Amazon Elastic Compute Cloud\. The Secrets Manager Agent can retrieve and cache secrets in memory so that your applications can consume secrets directly from the cache\. That means you can fetch the secrets your application needs from the localhost instead of making calls to Secrets Manager\. The Secrets Manager Agent can only make read requests to Secrets Manager \- it can't modify secrets\. 
+The Alibaba Cloud KMS Agent is a client\-side HTTP service that you can use to standardize consumption of secrets from KMS across environments\. The KMS Agent can retrieve and cache secrets in memory so that your applications can consume secrets directly from the cache\. That means you can fetch the secrets your application needs from the localhost instead of making calls to Secrets Manager\. The KMS Agent can only make read requests to KMS \- it can't modify secrets\. 
 
-The Secrets Manager Agent uses the AWS credentials you provide in your environment to make calls to Secrets Manager\. The Secrets Manager Agent offers protection against Server Side Request Forgery \(SSRF\) to help improve secret security\. You can configure the Secrets Manager Agent by setting the maximum number of connections, the time to live \(TTL\), the localhost HTTP port, and the cache size\. 
+The KMS Agent uses the Alibaba Cloud credentials you provide in your environment to make calls to Secrets Manager\. The Secrets Manager Agent offers protection against Server Side Request Forgery \(SSRF\) to help improve secret security\. You can configure the Secrets Manager Agent by setting the maximum number of connections, the time to live \(TTL\), the localhost HTTP port, and the cache size\. 
 
-Because the Secrets Manager Agent uses an in\-memory cache, it resets when the Secrets Manager Agent restarts\. The Secrets Manager Agent periodically refreshes the cached secret value\. The refresh happens when you try to read a secret from the Secrets Manager Agent after the TTL has expired\. The default refresh frequency \(TTL\) is 300 seconds, and you can change it by using a [Configuration file](#secrets-manager-agent-config) which you pass to the Secrets Manager Agent using the `--config` command line argument\. The Secrets Manager Agent does not include cache invalidation\. For example, if a secret rotates before the cache entry expires, the Secrets Manager Agent might return a stale secret value\. 
+Because the KMS Agent uses an in\-memory cache, it resets when the KMS Agent restarts\. The Secrets Manager Agent periodically refreshes the cached secret value\. The refresh happens when you try to read a secret from the Secrets Manager Agent after the TTL has expired\. The default refresh frequency \(TTL\) is 300 seconds, and you can change it by using a [Configuration file](#secrets-manager-agent-config) which you pass to the KMS Agent using the `--config` command line argument\. The KMS Agent does not include cache invalidation\. For example, if a secret rotates before the cache entry expires, the KMS Agent might return a stale secret value\. 
 
-The Secrets Manager Agent returns secret values in the same format as the response of `GetSecretValue`\. Secret values are not encrypted in the cache\.
+The KMS Agent returns secret values in the same format as the response of `GetSecretValue`\. Secret values are not encrypted in the cache\.
 
-To download the source code, see [https://github\.com/aws/aws\-secretsmanager\-agent](https://github.com/aws/aws-secretsmanager-agent) on GitHub\.
+To download the source code, see [https://github\.com/jht5945/alibaba\-cloud\-kms\-agent](https://github.com/aws/aws-secretsmanager-agent) on GitHub\.
+
+> WARNING: This project fork from aws-secretsmanager-agent, not all comments is modified correctly, FOR TEST ONLY, DO NOT USE in production
 
 **Topics**
 - [AWS Secrets Manager Agent](#aws-secrets-manager-agent)

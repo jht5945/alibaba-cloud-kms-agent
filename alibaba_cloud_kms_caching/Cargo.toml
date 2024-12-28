@@ -1,11 +1,11 @@
 [package]
-name = "aws_secretsmanager_caching"
+name = "alibaba_cloud_kms_caching"
 version = "1.0.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "The AWS Secrets Manager Rust caching client enables in-process caching of secrets for Rust applications."
-homepage = "https://github.com/aws/aws-secretsmanager-agent/aws_secretsmanager_caching"
-repository = "https://github.com/aws/aws-secretsmanager-agent"
+description = "The Alibaba Cloud KMS Rust caching client enables in-process caching of secrets for Rust applications."
+homepage = "https://github.com/jht5945/alibaba-cloud-kms-agent/alibaba_cloud_kms_caching"
+repository = "https://github.com/jht5945/alibaba-cloud-kms-agent"
 readme = "README.md"
 
 [dependencies]

@@ -3,7 +3,7 @@ use crate::utils::err_response;
 use aws_sdk_secretsmanager::error::ProvideErrorMetadata;
 use aws_sdk_secretsmanager::operation::describe_secret::DescribeSecretError;
 use aws_sdk_secretsmanager::operation::get_secret_value::GetSecretValueError;
-use aws_secretsmanager_caching::SecretsManagerCachingClient;
+use alibaba_cloud_kms_caching::SecretsManagerCachingClient;
 use aws_smithy_runtime_api::client::orchestrator::HttpResponse;
 use aws_smithy_runtime_api::client::result::SdkError;
 use log::error;
